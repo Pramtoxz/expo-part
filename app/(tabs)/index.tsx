@@ -1,19 +1,36 @@
+import AddToCartModal from '@/components/home/AddToCartModal';
+import FilterModal from '@/components/home/FilterModal';
+import ProductCard from '@/components/home/ProductCard';
+import SearchBar from '@/components/home/SearchBar';
 import { Colors } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const DUMMY_PRODUCTS = [
-  { id: '1', name: 'Element Cleaner', price: 'Rp 22.900', image: require('../../assets/images/pmo/ic_catalogue.png') },
-  { id: '2', name: 'Coolant', price: 'Rp 19.500', image: require('../../assets/images/pmo/ic_catalogue.png') },
-  { id: '3', name: 'Shoe Belt', price: 'Rp 90.000', image: require('../../assets/images/pmo/ic_catalogue.png') },
-  { id: '4', name: 'Brake Pad', price: 'Rp 150.000', image: require('../../assets/images/pmo/ic_catalogue.png') },
+  { id: '1', name: 'Element Cleaner', price: 'Rp 22.900', priceNum: 22900, image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400', motor: 'Beat' },
+  { id: '2', name: 'Coolant', price: 'Rp 19.500', priceNum: 19500, image: 'https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=400', motor: 'Vario' },
+  { id: '3', name: 'Shoe Belt', price: 'Rp 90.000', priceNum: 90000, image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400', motor: 'PCX' },
+  { id: '4', name: 'Brake Pad', price: 'Rp 150.000', priceNum: 150000, image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400', motor: 'Beat' },
+  { id: '5', name: 'Oil Filter', price: 'Rp 35.000', priceNum: 35000, image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', motor: 'Vario' },
+  { id: '6', name: 'Spark Plug', price: 'Rp 45.000', priceNum: 45000, image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400', motor: 'PCX' },
 ];
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<{ [key: string]: number }>({});
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
+  const [filterMotor, setFilterMotor] = useState<string>('all');
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    id: string;
+    name: string;
+    price: string;
+    image: string;
+  } | null>(null);
 
   const handleAddToCart = (productId: string) => {
     setCart(prev => ({
@@ -22,7 +39,32 @@ export default function Home() {
     }));
   };
 
+  const handleQuickAdd = (id: string, name: string, price: string, image: string) => {
+    setSelectedProduct({ id, name, price, image });
+    setShowAddToCartModal(true);
+  };
+
+  const handleAddToCartWithQty = (id: string, qty: number) => {
+    setCart(prev => ({
+      ...prev,
+      [id]: (prev[id] || 0) + qty
+    }));
+  };
+
+  const handleGoToCart = () => {
+    router.push('/cart');
+  };
+
   const cartItemCount = Object.values(cart).reduce((sum, count) => sum + count, 0);
+
+  const filteredProducts = DUMMY_PRODUCTS
+    .filter(p => filterMotor === 'all' || p.motor === filterMotor)
+    .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'price-asc') return a.priceNum - b.priceNum;
+      if (sortBy === 'price-desc') return b.priceNum - a.priceNum;
+      return 0;
+    });
 
   return (
     <View style={styles.container}>
@@ -31,7 +73,7 @@ export default function Home() {
           <Text style={styles.dealerCode}>12345 - Parts Shop ABC</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleGoToCart}>
             <Image 
               source={require('../../assets/images/pmo/ic_shopping_cart.png')}
               style={styles.headerIcon}
@@ -54,29 +96,11 @@ export default function Home() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBox}>
-            <Image 
-              source={require('../../assets/images/pmo/ic_search.png')}
-              style={styles.searchIcon}
-              contentFit="contain"
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Parts Number / Parts Description"
-              placeholderTextColor={Colors.gray}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          <TouchableOpacity style={styles.downloadButton}>
-            <Image 
-              source={require('../../assets/images/pmo/ic_download.png')}
-              style={styles.downloadIcon}
-              contentFit="contain"
-            />
-          </TouchableOpacity>
-        </View>
+        <SearchBar 
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onFilterPress={() => setShowFilterModal(true)}
+        />
 
         <View style={styles.campaignSection}>
           <View style={styles.campaignHeader}>
@@ -87,7 +111,7 @@ export default function Home() {
           </View>
           <View style={styles.campaignBanner}>
             <Image 
-              source={require('../../assets/images/pmo/bg_ss.webp')}
+              source={{ uri: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800' }}
               style={styles.bannerImage}
               contentFit="cover"
             />
@@ -96,34 +120,44 @@ export default function Home() {
 
         <View style={styles.productsSection}>
           <View style={styles.productGrid}>
-            {DUMMY_PRODUCTS.map((product) => (
-              <View key={product.id} style={styles.productCard}>
-                <View style={styles.productImageContainer}>
-                  <Image 
-                    source={product.image}
-                    style={styles.productImage}
-                    contentFit="contain"
-                  />
-                </View>
-                <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-                <View style={styles.productFooter}>
-                  <Text style={styles.productPrice}>{product.price}</Text>
-                  <TouchableOpacity 
-                    style={styles.addButton}
-                    onPress={() => handleAddToCart(product.id)}
-                  >
-                    <Image 
-                      source={require('../../assets/images/pmo/ic_add.png')}
-                      style={styles.addIcon}
-                      contentFit="contain"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                image={product.image}
+                onAddToCart={handleAddToCart}
+                onQuickAdd={handleQuickAdd}
+              />
             ))}
           </View>
         </View>
       </ScrollView>
+
+      <FilterModal
+        visible={showFilterModal}
+        sortBy={sortBy}
+        filterMotor={filterMotor}
+        onClose={() => setShowFilterModal(false)}
+        onSortChange={setSortBy}
+        onMotorChange={setFilterMotor}
+      />
+
+      {selectedProduct && (
+        <AddToCartModal
+          visible={showAddToCartModal}
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+          productPrice={selectedProduct.price}
+          productImage={selectedProduct.image}
+          onClose={() => {
+            setShowAddToCartModal(false);
+            setSelectedProduct(null);
+          }}
+          onAddToCart={handleAddToCartWithQty}
+        />
+      )}
     </View>
   );
 }
@@ -183,50 +217,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  searchIcon: {
-    width: 20,
-    height: 20,
-    tintColor: Colors.gray,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.text,
-  },
-  downloadButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  downloadIcon: {
-    width: 20,
-    height: 20,
-    tintColor: Colors.text,
-  },
   campaignSection: {
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -266,54 +256,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-  },
-  productCard: {
-    width: '48%',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  productImageContainer: {
-    width: '100%',
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  productImage: {
-    width: 80,
-    height: 80,
-  },
-  productName: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.text,
-    marginBottom: 8,
-    minHeight: 36,
-  },
-  productFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  productPrice: {
-    fontSize: 14,
-    fontFamily: Fonts.bold,
-    color: Colors.text,
-  },
-  addButton: {
-    width: 28,
-    height: 28,
-    backgroundColor: Colors.secondary,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addIcon: {
-    width: 16,
-    height: 16,
-    tintColor: Colors.white,
   },
 });
